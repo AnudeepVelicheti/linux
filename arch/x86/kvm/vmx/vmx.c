@@ -6402,13 +6402,14 @@ void dump_vmcs(struct kvm_vcpu *vcpu)
  */
 static int __vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
+	extern u32 exits_count[75];
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	union vmx_exit_reason exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
 	extern u32 total_exits;
 	u16 exit_handler_index;
 	total_exits++;
-
+	exits_count[exit_reason.basic]++;
 	/*
 	 * Flush logged GPAs PML buffer, this will make dirty_bitmap more
 	 * updated. Another good is, in kvm_vm_ioctl_get_dirty_log, before
@@ -6584,9 +6585,11 @@ unexpected_vmexit:
 static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
 	extern u64 total_cycles;
+	extern u64 exits_cycles[75];
+	struct vcpu_vmx *vmx = to_vmx(vcpu);
+	union vmx_exit_reason exit_reason = vmx->exit_reason;
 	u64 start_ts = rdtsc();
 	int ret = __vmx_handle_exit(vcpu, exit_fastpath);
-
 	/*
 	 * Exit to user space when bus lock detected to inform that there is
 	 * a bus lock in guest.
@@ -6597,9 +6600,11 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 
 		vcpu->run->flags |= KVM_RUN_X86_BUS_LOCK;
 		total_cycles += (rdtsc() - start_ts);
+		exits_cycles[exit_reason.basic] += (rdtsc() - start_ts);
 		return 0;
 	}
 	total_cycles += (rdtsc() - start_ts);
+	exits_cycles[exit_reason.basic] += (rdtsc() - start_ts);
 	return ret;
 }
 
